@@ -1,4 +1,4 @@
-#https://www.youtube.com/user/Nusiq
+#https://github.com/Nusiq/brfunctions
 from pymclevel import TAG_List
 from pymclevel import TAG_Byte
 from pymclevel import TAG_Int
