@@ -1,0 +1,44 @@
+`/s[A]`, `/state[A]` - state with name "A"
+`/s[A](123 123 123)`, `/state[A](123 123 123)` - defined coordinates "123 123 123" state with name "A"
+`/p[A](123 123 123)`, `/position[A](123 123 123)` - position "123 123 123" with name "A"
+`/p[A](123 123 123 456 456 456)`, `/position[A](123 123 123 456 456 456)` - area between "123 123 123" and "456 456 456" with name "A"
+`/c[A](asdf)`, `/custom[A](asdf)` - custom value "asdf" with name "A"
+
+`s[A](1)`, `state[A](1)` - insert representation of value 1 in state "A"
+`p[A]@`, `position[A]@` - insert position "A" using selector style "x=123,y=123,z=123" or if its dimension "x=123,y=123,z=123,dx=100,dy=100,dz=100"
+`p[A]`, `position[A]` - insert position "A" in default style
+`c[A]`, `custom[A]` - insert value of custom value "A"
+
+`/i[A]`, `/impulse[A]` - new impulse group of commandblocks with name "A"
+#`/i`, `/impulse` - new unnamed impulse group of commandblocks
+
+`/r[A]`, `/repeat[A]` - new repeating group of commandblocks with name "A"
+#`/r`, `/repeat` - new unnamed repeating group of commandblocks
+
+`/d[A]`, `/dialog[A]` - new dialog group of commandblocks with name "A"
+#`/d`, `dialog` - new unnamed dialog group of commandblocks
+
+
+`i[A]`, `impulse[A]`, `i[A](1)`, `impulse[A](1)` - activates impulse group of commandblocks with name "A"
+`i[A](0)`, `impulse[A](0)` - stops impulse group of commandblocks with name "A"
+
+`r[A]`, `repeat[A]`, `r[A](1)`, `repeat[A](1)` - activates repeating group of commandblocks with name "A"
+`r[A](0)`, `repeat[A](0)` - stops repeating group of commandblocks with name "A"
+
+`d[A]`, `dialog[A]`, `d[A](1)`, `dialog[A](1)` - activates repeating group of commandblocks with name "A"
+`d[A](0)`, `dialog[A](0)` - stops repeating group of commandblocks with name "A"
+
+#Comment - a comment
+say hi - a command
+> say hi - conditional command
+
+
+`d[A]` - starting new command chains in dialog
++ say this
+> say is
+> say one
+> say chain
++ say this
+> say is
+ say new
+ say chain
