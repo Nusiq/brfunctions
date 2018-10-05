@@ -1300,7 +1300,7 @@ class Planner:
 displayName = "Nusiq's brfunctions - v0.1"
 
 inputs = (
-	("File path",("string",'value=C:\\file.brfunction')),
+	("File path","file-open"),
 	("Floor block", alphaMaterials[159,0])#White stained clay
 	#("Kierunek", tuple(Builder.direction.keys())),
 	#("Typ", tuple(Builder.type.keys())),
@@ -1309,7 +1309,7 @@ inputs = (
 def perform(level, box, options):
 	os.system('cls')
 	parser = Parser()
-	parser.parse_file(options["File path"])
+	parser.parse_file(str(options["File path"]))
 	planner = Planner(parser)
 	floor_block = options["Floor block"]
 	
