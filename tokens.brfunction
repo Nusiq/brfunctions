@@ -42,3 +42,30 @@ say hi - a command
 > say is
  say new
  say chain
+ 
+
+###########################PROJECT FILE######################
+Project file should be .json file with list of strings inside it. These strings are paths to a .brfunction file. Path to project file is a home path. Example:
+["file.brfinction","file1.brfunction"]
+ 
+ 
+ 
+###################################################################################################
+###################################################################################################
+###################################################################################################
+###################################################################################################
+##############################Planned features.####################################################
+`time_sequence_start(SELECTOR SCOREBOARD 1)` and `time_sequence_end` - starts and ends time sequence using selector SELECTOR scoreboard SCOREBOARD and starting at value 1. Example:
+	`time_sequence_start(SELECTOR SCOREBOARD 1)`
+	say ABC
+	> say DEF
+	+10 say XYZ
+	say ZYX
+	`time_sequence_end`
+	Code above will create sequence triggered by setting SELECTOR SCOREBOARD to 1. Command "say ABC" will be executed instantly with conditional command "say DEF". Commands say XYZ and ZYX will be executed 10 activations of commandblocks chain later.
+-Add option to define name of commandblock - squere brackets before the command
+-`id[A]` - generates numerical ID for name A. Using the same key inside squere brackets will always return the same number.
+-Separate 3-coordinates positions from 6-coordinates position and rename it to position and area.
+-`seq(say X Y Z;X=0.3 0.7 0.1;Y=1 5;Z=0 100 25)` - generates sequence of lines (commands and tokens) before processing the whole file. It accepts any number of named arguments that are representing range of numbers to iterate through. The first argument is a string which substrings matching the names of further arguments will be replaced with numbers.
+-Mark dialog as deprecated.
+-Mark state as deprecated.

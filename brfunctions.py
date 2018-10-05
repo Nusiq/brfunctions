@@ -10,6 +10,7 @@ from pymclevel import TAG_String
 from pymclevel import TAG_Long
 from pymclevel import TAG_Int_Array
 from pymclevel import alphaMaterials
+import json
 import string
 import os
 
@@ -136,10 +137,12 @@ class Builder:
 	
 class Token:
 	state, create_state, position, create_position, custom, create_custom, impulse, create_impulse, repeat, create_repeat, dialog, create_dialog, comment, conditional, new_dialog_chain, command,new_line = range(17)
-	def __init__(self, type=None, value=None, name=None):
+	def __init__(self, type=None, value=None, name=None, line=None, file_name=None):
 		self.type = type
 		self.value = value
 		self.name = name
+		self.file_name = file_name
+		self.line = line
 	
 	def __str__(self):
 		types = ['state', 'create_state', 'position', 'create_position', 'custom', 'create_custom', 'impulse', 'create_impulse', 'repeat', 'create_repeat', 'dialog', 'create_dialog', 'comment', 'conditional', 'new_dialog_chain','command','new_line']
@@ -159,8 +162,6 @@ class Parser:
 	'stained_hardened_clay 12', 'stained_hardened_clay 13', 'stained_hardened_clay 14',
 	'stained_hardened_clay 15')
 	off_on = ('lapis_block 0','redstone_block 0')
-
-
 	def __init__(self):
 		self.states = {}
 		self.positions = {}
@@ -274,7 +275,7 @@ class Parser:
 		return length, True
 	cut_word = staticmethod(cut_word)
 	
-	def parse(input):
+	def parse(input,input_line_index,input_file_name):
 		input = input.strip()
 		tokens = []
 		if input.startswith('#') or input == '':
@@ -299,7 +300,7 @@ class Parser:
 						consumed_input = i
 					elif input[i] == "+":
 						i+=1
-						tokens.append(Token(Token.new_dialog_chain, None, None))
+						tokens.append(Token(Token.new_dialog_chain, None, None, input_line_index, input_file_name))
 						consumed_input = i
 						for c in input[consumed_input:]:
 							if c in ' \t':
@@ -309,7 +310,7 @@ class Parser:
 								break
 					elif input[i] == ">":
 						i+=1
-						tokens.append(Token(Token.conditional, None, None))
+						tokens.append(Token(Token.conditional, None, None, input_line_index, input_file_name))
 						consumed_input = i
 						for c in input[consumed_input:]:
 							if c in ' \t':
@@ -341,15 +342,15 @@ class Parser:
 				length, _ = Parser.cut_word(input[i:],separators='`#',escape_characters='\\',allowed_chars=None)
 				i += length
 				if i >= input_len:
-					tokens.append(Token(Token.command, input[consumed_input:i], None))
+					tokens.append(Token(Token.command, input[consumed_input:i], None, input_line_index, input_file_name))
 					return tokens
 				if input[i] == '`':
-					tokens.append(Token(Token.command, input[consumed_input:i], None))
+					tokens.append(Token(Token.command, input[consumed_input:i], None, input_line_index, input_file_name))
 					i+=1
 					consumed_input = i
 					state = special
 				elif input[i] == '#':
-					tokens.append(Token(Token.command, input[consumed_input:i], None))
+					tokens.append(Token(Token.command, input[consumed_input:i], None, input_line_index, input_file_name))
 					i+=1
 					consumed_input = i
 					state = comment	
@@ -358,46 +359,46 @@ class Parser:
 				if input[i] == '/':
 					i+=1
 					if i >= input_len:
-						raise Exception('Unexpected end of line')
+						raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 					if input[i] == 's':#state
 						if input[i:].startswith('state'):
 							i += len('state')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '(':
 							i+=1
-							if i >= input_len: raise Exception('Unexpected end of line')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 							length, position, success, error = Parser.parse_coordinates(input[i:], count=3,allow_fraction=False)
-							if not success: raise Exception(error)
+							if not success: raise Exception(error+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += length
-							if not success: raise Exception(error)
-							if input[i] != ')': raise Exception('Unexpected character')
+							if not success: raise Exception(error+' at line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] != '`': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.create_state, position,name))
+								tokens.append(Token(Token.create_state, position, name,input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.create_state, position,name))
+								tokens.append(Token(Token.create_state, position, name, input_line_index, input_file_name))
 								consumed_input = i
 								state = end	
 						else:
-							if input[i] != '`': raise Exception('Unexpected character')
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.create_state, None,name))
+								tokens.append(Token(Token.create_state, None,name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.create_state, None,name))
+								tokens.append(Token(Token.create_state, None,name, input_line_index, input_file_name))
 								consumed_input = i
 								state = end
 					elif input[i] == 'p':#position
@@ -405,32 +406,32 @@ class Parser:
 							i += len('position')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '(': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '(': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, position, success, error = Parser.parse_coordinates(input[i:], count=6,allow_fraction=False)
 						if not success:
 							length, position, success, error = Parser.parse_coordinates(input[i:], count=3,allow_fraction=False)
-						if not success: raise Exception(error)
+						if not success: raise Exception(error+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += length
-						if not success: raise Exception(error)
-						if input[i] != ')': raise Exception('Unexpected character')
+						if not success: raise Exception(error+' at line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.create_position, position,name))
+							tokens.append(Token(Token.create_position, position, name, input_line_index, input_file_name))
 							return tokens
 						else:
-							tokens.append(Token(Token.create_position, position,name))
+							tokens.append(Token(Token.create_position, position, name, input_line_index, input_file_name))
 							consumed_input = i
 							state = end	
 					elif input[i] == 'c':#custom
@@ -438,30 +439,30 @@ class Parser:
 							i += len('custom')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '(': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '(': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						
 						length, _ = Parser.cut_word(input[i:],separators=')',escape_characters='\\',allowed_chars=None)
 						value = input[i:i+length]
 						i += length
-						if input[i] != ')': raise Exception('Unexpected character')
+						if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.create_custom, value,name))
+							tokens.append(Token(Token.create_custom, value, name, input_line_index, input_file_name))
 							return tokens
 						else:
-							tokens.append(Token(Token.create_custom, value,name))
+							tokens.append(Token(Token.create_custom, value, name, input_line_index, input_file_name))
 							consumed_input = i
 							state = end	
 					elif input[i] == 'i':#impulse
@@ -469,20 +470,20 @@ class Parser:
 							i += len('impulse')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.create_impulse, None,name))
+							tokens.append(Token(Token.create_impulse, None, name, input_line_index, input_file_name))
 							return tokens
 						else:
-							tokens.append(Token(Token.create_impulse, None,name))
+							tokens.append(Token(Token.create_impulse, None, name, input_line_index, input_file_name))
 							consumed_input = i
 							state = end	
 					elif input[i] == 'r':#repeat
@@ -490,20 +491,20 @@ class Parser:
 							i += len('repeat')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.create_repeat, None,name))
+							tokens.append(Token(Token.create_repeat, None, name, input_line_index, input_file_name))
 							return tokens
 						else:
-							tokens.append(Token(Token.create_repeat, None,name))
+							tokens.append(Token(Token.create_repeat, None, name, input_line_index, input_file_name))
 							consumed_input = i
 							state = end	
 					elif input[i] == 'd':#dialog
@@ -511,217 +512,217 @@ class Parser:
 							i += len('dialog')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.create_dialog, None,name))
+							tokens.append(Token(Token.create_dialog, None, name, input_line_index, input_file_name))
 							return tokens
 						else:
-							tokens.append(Token(Token.create_dialog, None,name))
+							tokens.append(Token(Token.create_dialog, None, name, input_line_index, input_file_name))
 							consumed_input = i
 							state = end	
 					else:
-						raise Exception('Unexpected character')
+						raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 				else:
 					if input[i] == 's':#state
 						if input[i:].startswith('state'):
 							i += len('state')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '(': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '(': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						
 						length, _ = Parser.cut_word(input[i:],separators=')',escape_characters='\\',allowed_chars=string.digits)
 						value = int(input[i:i+length])
 						i += length
-						if input[i] != ')': raise Exception('Unexpected character')
+						if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
 							#if value.strip() != '':
-							tokens.append(Token(Token.state, value,name))
+							tokens.append(Token(Token.state, value,name, input_line_index, input_file_name))
 							return tokens
 						else:
-							tokens.append(Token(Token.state, value,name))
+							tokens.append(Token(Token.state, value,name, input_line_index, input_file_name))
 							consumed_input = i
 					elif input[i] == 'p':#position
 						if input[i:].startswith('position'):
 							i += len('position')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						position_type = 'normal'
 						if input[i] == '@':
 							position_type = 'selector'
 							i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.position, position_type,name))
+							tokens.append(Token(Token.position, position_type, name, input_line_index, input_file_name))
 							return tokens
 						else:
 							consumed_input = i
-							tokens.append(Token(Token.position, position_type,name))
+							tokens.append(Token(Token.position, position_type, name, input_line_index, input_file_name))
 					elif input[i] == 'c':#custom
 						if input[i:].startswith('custom'):
 							i += len('custom')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
-						if input[i] != '`': raise Exception('Unexpected character')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 						i += 1
 						if i >= input_len:
-							tokens.append(Token(Token.custom, None,name))
+							tokens.append(Token(Token.custom, None, name, input_line_index, input_file_name))
 							return tokens
 						else:
 							consumed_input = i
-							tokens.append(Token(Token.custom, None,name))
+							tokens.append(Token(Token.custom, None, name, input_line_index, input_file_name))
 					elif input[i] == 'i':#impulse
 						if input[i:].startswith('impulse'):
 							i += len('impulse')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '(':
 							i+=1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] not in '01': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] not in '01': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							value = int(input[i])
 							i += 1
-							if input[i] != ')': raise Exception('Unexpected character')
+							if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] != '`': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.impulse, value,name))
+								tokens.append(Token(Token.impulse, value,name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.impulse, value,name))
+								tokens.append(Token(Token.impulse, value,name, input_line_index, input_file_name))
 								consumed_input = i
 						else:
-							if input[i] != '`': raise Exception('Unexpected character')
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.impulse, 1,name))
+								tokens.append(Token(Token.impulse, 1, name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.impulse, 1,name))
+								tokens.append(Token(Token.impulse, 1, name, input_line_index, input_file_name))
 								consumed_input = i
 					elif input[i] == 'r':#repeat
 						if input[i:].startswith('repeat'):
 							i += len('repeat')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '(':
 							i+=1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] not in '01': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] not in '01': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							value = int(input[i])
 							i += 1
-							if input[i] != ')': raise Exception('Unexpected character')
+							if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] != '`': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.repeat, value,name))
+								tokens.append(Token(Token.repeat, value,name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.repeat, value,name))
+								tokens.append(Token(Token.repeat, value,name, input_line_index, input_file_name))
 								consumed_input = i
 						else:
-							if input[i] != '`': raise Exception('Unexpected character')
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.repeat, 1,name))
+								tokens.append(Token(Token.repeat, 1,name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.repeat, 1,name))
+								tokens.append(Token(Token.repeat, 1,name, input_line_index, input_file_name))
 								consumed_input = i
 					elif input[i] == 'd':#dialog
 						if input[i:].startswith('dialog'):
 							i += len('dialog')
 						else:
 							i += 1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '[': i+=1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
 						name = input[i:length+i]
 						i += length+1
-						if i >= input_len: raise Exception('Unexpected end of line')
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 						if input[i] == '(':
 							i+=1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] not in '01': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] not in '01': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							value = int(input[i])
 							i += 1
-							if input[i] != ')': raise Exception('Unexpected character')
+							if input[i] != ')': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
-							if i >= input_len: raise Exception('Unexpected end of line')
-							if input[i] != '`': raise Exception('Unexpected character')
+							if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.dialog, value,name))
+								tokens.append(Token(Token.dialog, value,name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.dialog, value,name))
+								tokens.append(Token(Token.dialog, value,name, input_line_index, input_file_name))
 								consumed_input = i
 						else:
-							if input[i] != '`': raise Exception('Unexpected character')
+							if input[i] != '`': raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 							i += 1
 							if i >= input_len:
-								tokens.append(Token(Token.dialog, 1,name))
+								tokens.append(Token(Token.dialog, 1,name, input_line_index, input_file_name))
 								return tokens
 							else:
-								tokens.append(Token(Token.dialog, 1,name))
+								tokens.append(Token(Token.dialog, 1,name, input_line_index, input_file_name))
 								consumed_input = i
 					else:
-						raise Exception('Unexpected character')
+						raise Exception('Unexpected character'+' at line '+str(input_line_index)+' in file '+input_file_name)
 					
 
 					if input[i] == '#':
@@ -742,26 +743,50 @@ class Parser:
 				elif input[i] in ' \t':
 					consumed_input = i
 				else:
-					raise Exception('Unexpected symbol')
+					raise Exception('Unexpected symbol'+' at line '+str(input_line_index)+' in file '+input_file_name)
 				i += 1
 			elif state == comment:#Append comment to tokens and return
 				i += 1
 				if i >= input_len:
-					tokens.append(Token(Token.comment, input[consumed_input:i] ,None))
+					tokens.append(Token(Token.comment, input[consumed_input:i] ,None, input_line_index, input_file_name))
 					return tokens
 				
 				
 			if i >= input_len:
-				raise Exception('Unexpected end of line')
+				raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
 	parse = staticmethod(parse)			
 				
 	def parse_file(self, file_name):
-		with open(file_name) as f:
-			for l in f:
-				p = Parser.parse(l)
-				self.tokens.extend(p)
-				self.tokens.append(Token(Token.new_line))
 		
+		use_as_project = True
+		files_list = []
+		try:
+			with open(file_name) as projectFile:
+				files_list = json.load(projectFile)	
+		except:
+			use_as_project = False
+		if isinstance(files_list, list) == False:
+			raise Exception('Project file needs to be JSON list of directories. '+type(files_list))
+		if use_as_project:
+			path = os.path.split(file_name)[0]
+			for item_file_name in files_list:
+				full_item_file_name = path+'/'+item_file_name
+				with open(full_item_file_name) as f:
+					line_index = 1
+					for l in f:
+						p = Parser.parse(l,line_index,file_name)
+						self.tokens.extend(p)
+						self.tokens.append(Token(Token.new_line, None, None, line_index, full_item_file_name))
+						line_index += 1	
+		else:
+			with open(file_name) as f:
+				line_index = 1
+				for l in f:
+					p = Parser.parse(l,line_index,file_name)
+					self.tokens.extend(p)
+					self.tokens.append(Token(Token.new_line, None, None, line_index, file_name))
+					line_index += 1
+		#raise Exception('YOU SHELL NOT PASS')
 		#expect_new_line  = [Token.comment]
 		#tape, value, name
 		expect_comment_or_new_line = (Token.create_state,Token.create_position,Token.create_custom,Token.create_impulse,Token.create_repeat,Token.create_dialog)
@@ -776,52 +801,52 @@ class Parser:
 		for t in self.tokens:##################DEFINITIONS
 			if t.type == Token.create_state:
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "create_state" token at line'+str(line))
+					raise Exception('Unexpected "create_state" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name in self.states:
-					raise Exception('State '+t.name+' is declared more than one time (line '+str(line)+')')
+					raise Exception('State '+t.name+' is declared more than one time (line '+str(t.line)+' in file '+t.file_name+')')
 				self.states[t.name] = t.value
 			elif t.type == Token.create_position:
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "create_position" token at line'+str(line))
+					raise Exception('Unexpected "create_position" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name in self.positions:
-					raise Exception('Position '+t.name+' is declared more than one time (line '+str(line)+')')
+					raise Exception('Position '+t.name+' is declared more than one time (line '+str(t.line)+' in file '+t.file_name+')')
 				self.positions[t.name] = t.value
 			elif t.type == Token.create_custom:
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "create_custom" token at line'+str(line))
+					raise Exception('Unexpected "create_custom" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name in self.custom_values:
-					raise Exception('Custom value '+t.name+' is declared more than one time (line '+str(line)+')')
+					raise Exception('Custom value '+t.name+' is declared more than one time (line '+str(t.line)+' in file '+t.file_name+')')
 				self.custom_values[t.name] = t.value
 			elif t.type == Token.create_impulse:#IMPULSE CHAIN
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "create_impulse" token at line'+str(line))
+					raise Exception('Unexpected "create_impulse" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name in self.impulse_chains:
-					raise Exception('Impulse chain '+t.name+' is declared more than one time (line '+str(line)+')')
+					raise Exception('Impulse chain '+t.name+' is declared more than one time (line '+str(t.line)+' in file '+t.file_name+')')
 				self.impulse_chains[t.name] = {'position':t.value, 'commands':[]}				
 				last_command_group = t
 				is_first = True
 			elif t.type == Token.create_repeat:#REPEATING CHAIN
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "create_repeat" token at line'+str(line))
+					raise Exception('Unexpected "create_repeat" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name in self.repeat_chains:
-					raise Exception('Repeating chain '+t.name+' is declared more than one time (line '+str(line)+')')
+					raise Exception('Repeating chain '+t.name+' is declared more than one time (line '+str(t.line)+' in file '+t.file_name+')')
 				self.repeat_chains[t.name] = {'position':t.value, 'commands':[]}
 				last_command_group = t
 				is_first = True
 			elif t.type == Token.create_dialog:#DIALOG CHAIN
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "create_dialog" token at line'+str(line))
+					raise Exception('Unexpected "create_dialog" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name in self.dialogs:
-					raise Exception('Dialog '+t.name+' is declared more than one time (line '+str(line)+')')
+					raise Exception('Dialog '+t.name+' is declared more than one time (line '+str(t.line)+' in file '+t.file_name+')')
 				new_dialog_chain_started = False
 				self.dialogs[t.name] = {'position':t.value, 'commands':[]}				
 				last_command_group = t
 				is_first = True
 			elif t.type in code_tokens:
 				if last_command_group == None:
-					raise Exception('Unexpected minecraft command before starting command chain token at line '+str(line))
+					raise Exception('Unexpected minecraft command before starting command chain token at line '+str(t.line)+' in file '+t.file_name)
 				if last_command_group.type == Token.create_dialog and new_dialog_chain_started == False:
-					raise Exception('Unexpected minecraft command before starting new dialog command chain (line '+str(line)+')')
+					raise Exception('Unexpected minecraft command before starting new dialog command chain (line '+str(t.line)+' in file '+t.file_name+')')
 				curr_command_line.append(t)
 				is_first = False
 			elif t.type == Token.new_dialog_chain:
@@ -830,7 +855,7 @@ class Parser:
 				is_first = True
 			elif t.type == Token.conditional:
 				if is_first:
-					raise Exception('First command in chain cannot be conditional (line '+str(line)+')')
+					raise Exception('First command in chain cannot be conditional (line '+str(t.line)+' in file '+t.file_name+')')
 				curr_command_line.append(t)
 			elif t.type == Token.new_line:
 				add_to_chain = True
@@ -850,47 +875,48 @@ class Parser:
 				curr_command_line = []
 				line+=1
 			lastToken = t.type
+		
 		lastToken = Token.new_line
 		line = 1
 		for t in self.tokens:###############USING SAVED DATA
 			if t.type == Token.state:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "state" token at line'+str(line))
+					raise Exception('Unexpected "state" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name not in self.states:
-					raise Exception('Trying to refer to state '+t.name+' but it has on definition (line '+str(line)+')')
+					raise Exception('Trying to refer to state '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')
 			elif t.type == Token.position:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "position" token at line'+str(line))
+					raise Exception('Unexpected "position" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name not in self.positions:
-					raise Exception('Trying to refer to position '+t.name+' but it has on definition (line '+str(line)+')')
+					raise Exception('Trying to refer to position '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')
 			elif t.type == Token.custom:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "custom" token at line'+str(line))
+					raise Exception('Unexpected "custom" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name not in self.custom_values:
-					raise Exception('Trying to refer to custom value '+t.name+' but it has on definition (line '+str(line)+')')
+					raise Exception('Trying to refer to custom value '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')
 			elif t.type == Token.impulse:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "impulse" token at line'+str(line))
+					raise Exception('Unexpected "impulse" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name not in self.impulse_chains:
-					raise Exception('Trying to refer to impulse chain '+t.name+' but it has on definition (line '+str(line)+')')
+					raise Exception('Trying to refer to impulse chain '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')
 			elif t.type == Token.repeat:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "repeat" token at line'+str(line))
+					raise Exception('Unexpected "repeat" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name not in self.repeat_chains:
-					raise Exception('Trying to refer to repeating chain '+t.name+' but it has on definition (line '+str(line)+')')
+					raise Exception('Trying to refer to repeating chain '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')
 			elif t.type == Token.dialog:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "dialog" token at line'+str(line))
+					raise Exception('Unexpected "dialog" token at line'+str(t.line)+' in file '+t.file_name)
 				if t.name not in self.dialogs:
-					raise Exception('Trying to refer to dialog '+t.name+' but it has on definition (line '+str(line)+')')	
+					raise Exception('Trying to refer to dialog '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')	
 			#elif t.type == Token.comment:
 			#	pass
 			elif t.type == Token.command:
 				if lastToken in expect_comment_or_new_line:
-					raise Exception('Unexpected "command" token at line'+str(line))
+					raise Exception('Unexpected "command" token at line'+str(t.line)+' in file '+t.file_name)
 			elif t.type == Token.conditional:
 				if lastToken != Token.new_line:
-					raise Exception('Unexpected "conditional" token at line'+str(line))
+					raise Exception('Unexpected "conditional" token at line'+str(t.line)+' in file '+t.file_name)
 			elif t.type == Token.new_line:
 				line += 1
 			lastToken = t.type
