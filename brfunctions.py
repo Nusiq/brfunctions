@@ -15,6 +15,14 @@ import string
 import os
 
 
+class CustomBox:
+	def __init__(self):
+		self.minx = None
+		self.miny = None
+		self.minz = None
+		self.maxx = None
+		self.maxy = None
+		self.maxz = None
 
 class Builder:
 	y_down, y_up, z_down, z_up, x_down, x_up = range(6)
@@ -70,7 +78,7 @@ class Builder:
 		tileCB["LastOutput"] = TAG_String(u'OUTPUT')
 		tileCB["LastOutputParams"] = TAG_List([TAG_String(u'1'),TAG_String(u'2'),TAG_String(u'3')])
 		tileCB["SuccessCount"] = TAG_Int(0)
-		tileCB["TrackOutput"] = TAG_Byte(1)
+		tileCB["TrackOutput"] = TAG_Byte(0)
 		tileCB["Version"] = TAG_Int(8)
 		tileCB["auto"] = TAG_Byte(1 if cmdBlockType == Builder.cb_chain else 0)
 		tileCB["conditionMet"] = TAG_Byte(0)
@@ -170,6 +178,7 @@ class Parser:
 		self.repeat_chains = {}
 		self.dialogs = {}
 		self.tokens = []
+		self.box = None
 	def parse_coordinates(command, count=3,allow_fraction=True):
 		def parse_coordinate(command,allow_fraction=True):
 			start, type,sign, integer, fraction = range(5)
@@ -757,7 +766,6 @@ class Parser:
 	parse = staticmethod(parse)			
 				
 	def parse_file(self, file_name):
-		
 		use_as_project = True
 		files_list = []
 		try:
@@ -765,8 +773,22 @@ class Parser:
 				files_list = json.load(projectFile)	
 		except:
 			use_as_project = False
-		if isinstance(files_list, list) == False:
-			raise Exception('Project file needs to be JSON list of directories. '+type(files_list))
+		if  isinstance(files_list, dict) == False:
+			if isinstance(files_list, list) == False:
+				raise Exception('Invalid project file structure. '+type(files_list))
+		else:
+			if 'files' in files_list.keys() and 'area' in files_list.keys():
+				self.box  = CustomBox()
+				self.box.minx = files_list['area'][0] if files_list['area'][0] < files_list['area'][3] else files_list['area'][3]
+				self.box.miny = files_list['area'][1] if files_list['area'][1] < files_list['area'][4] else files_list['area'][4]
+				self.box.minz = files_list['area'][2] if files_list['area'][2] < files_list['area'][5] else files_list['area'][5]
+				self.box.maxx = files_list['area'][0] if files_list['area'][0] > files_list['area'][3] else files_list['area'][3]
+				self.box.maxy = files_list['area'][1] if files_list['area'][1] > files_list['area'][4] else files_list['area'][4]
+				self.box.maxz = files_list['area'][2] if files_list['area'][2] > files_list['area'][5] else files_list['area'][5]
+				print str(self.box.minx) + ' ' + str(self.box.miny) + ' ' + str(self.box.minz) + ' | ' + str(self.box.maxx) + ' ' + str(self.box.maxy) + ' ' + str(self.box.maxz)
+				files_list = files_list['files']
+			else:
+				raise Exception('Invalid project file structure. '+type(files_list))
 		if use_as_project:
 			path = os.path.split(file_name)[0]
 			for item_file_name in files_list:
@@ -792,7 +814,6 @@ class Parser:
 		expect_comment_or_new_line = (Token.create_state,Token.create_position,Token.create_custom,Token.create_impulse,Token.create_repeat,Token.create_dialog)
 		code_tokens = (Token.state,Token.position,Token.custom,Token.impulse,Token.repeat,Token.dialog,Token.command)
 		lastToken = Token.new_line
-		line = 1
 		curr_command_line = []
 		is_first = True
 		last_command_group = None
@@ -873,11 +894,9 @@ class Parser:
 					elif last_command_group.type == Token.create_dialog:
 						self.dialogs[last_command_group.name]['commands'].append(curr_command_line)
 				curr_command_line = []
-				line+=1
 			lastToken = t.type
 		
 		lastToken = Token.new_line
-		line = 1
 		for t in self.tokens:###############USING SAVED DATA
 			if t.type == Token.state:
 				if lastToken in expect_comment_or_new_line:
@@ -918,7 +937,7 @@ class Parser:
 				if lastToken != Token.new_line:
 					raise Exception('Unexpected "conditional" token at line'+str(t.line)+' in file '+t.file_name)
 			elif t.type == Token.new_line:
-				line += 1
+				pass
 			lastToken = t.type
 	
 	def command_to_string(self,command_elements):
@@ -1338,8 +1357,10 @@ def perform(level, box, options):
 	parser.parse_file(str(options["File path"]))
 	planner = Planner(parser)
 	floor_block = options["Floor block"]
-	
-	planner.plan_and_build(box, level, floor_block)
+	if parser.box != None:
+		planner.plan_and_build(parser.box , level, floor_block)
+	else:
+		planner.plan_and_build(box, level, floor_block)
 	
 
 		

@@ -47,8 +47,19 @@ say hi - a command
 ###########################PROJECT FILE######################
 Project file should be .json file with list of strings inside it. These strings are paths to a .brfunction file. Path to project file is a home path. Example:
 ["file.brfinction","file1.brfunction"]
- 
- 
+or two list in an object ("area" and "files"), example:
+{
+    "area":[1992,6,419,2042,49,466],
+    "files":[
+        "file1.brfunction",
+        "file2.brfunction",
+        "file3.brfunction",
+        "file4.brfunction",
+        "file5.brfunction"
+    ]
+}
+"area" option will replace selection box in mcedit. WARNING! Changes on chunks that are not in selection box are not visible until save.
+
  
 ###################################################################################################
 ###################################################################################################
