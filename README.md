@@ -94,8 +94,48 @@ say DEF
 setblock `d[myDialogChain](0)`
 ```
 This example shows a definition of a chain of commandblocks called "myDialogChain". The first line of code is a definition. All commands after that (until the next definition of a structure) are considered part of the dialog chain. The last command has a reference to the dialog chain (`` `d[myDialogChain](0)` ``). This reference turns the command chain off. `` `d[myDialogChain](0)` `` is converted into `X Y Z lapis_block 0`. `` `d[myDialogChain](1)` `` would be converted into `X Y Z redstone_block 0` and would turn the chain of commands on. `X Y Z` are coordinates of a block next to the first block of the chain of commands. Notice that the mapmaker doesn't need to know the coordinates of that block. They are picked by the filter automatically. `+` before command in dialog chain is used to group commands that should be executed in the same tick together. First two commands from example above will be executed instantly after activation of "myDialogChain" and the other two will be executed after a few ticks of delay. 
+## Custom values
+### Position (position)
+You can add names to positions to make your life easier. Example:
+```
+`/position[myPosition](1 2 3)`
+tp @a `p[myPosition]`
+say @e[`p[myPosition]@`,r=5]
+```
+The tree examples above show different uses of position. The first one is a definition of a position called "myPosition". The second command uses the reference to this position (it will return `1 2 3`). The third command is the selector reference to "myPosition" and it will return "x=1,y=2,z=3".
+### Position (area)
+Putting 6 values into a position will define an area betweeen two positions. Example:
+```
+`/position[myArea](1 2 3 11 12 13)`
+fill `p[myArea]` stone
+say @e[`p[myArea]@`]
+```
+The tree examples above show different uses of position. The first one is a definition of an area called "myArea". The second command uses the reference to this position (it will return `1 2 3 11 12 13`). The third command is the selector reference to "myArea" and it will return "x=1,y=2,z=3,dx=10,dy=10,dz=10".
+### Custom
+Custom values are used to add name to any string.
+```
+`/custom[myCustomValue](Hello world!)`
+say `c[myCustomValue]`
+```
+Example above shows two uses of custom value. The first use is the definition. The second commands show how to refere to a custom value (second command will be transformed into `say Hello world!`).
+## Conditional commandblocks
+If you want to make a commandblock conditional just type `>` before its command. Example:
+```
+scoreboard players test FAKEPLAYER var 1 1
+> say score of FAKEPLAYER in var scoreboard is 1
+```
+The second command from example above is conditional.
+## Setting name of commandblock.
+If you want to make a commandblock with a custom name just type the name inside squere brackeds before the commands. Example
+```
+scoreboard players test FAKEPLAYER var 1 1
+>[CustomName] say score of FAKEPLAYER in var scoreboard is 1
+[CustomName] say another commandblock with custom name.
+```
 
+## Comments
+Everything after `#` until the end of the line is a comment.
 # Content
 brfunctions.py - the filter.  
-tokens.py - additional syntax to minecraft commands required by the filter.  
+tokens.py - old description of custom syntax.
 highlight.xml - syntax highlighting for Notepad++.  
