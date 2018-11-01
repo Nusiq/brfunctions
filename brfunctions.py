@@ -60,17 +60,17 @@ class Builder:
 		if compare == False:
 			direction += 4
 		#Wywolanie funkcji wewnatrz drugiej funkcji
-		Builder.place_block(x, y, z, alphaMaterials[149, direction], level)#Zwroc uwage na odwolanie sie do odpowiedniego elementu alphaMaterials
+		Builder.place_block(x, y, z, alphaMaterials[149, direction], level)
 	place_comparator = staticmethod(place_comparator)
 	
 	
-	def place_cmdblock(x, y, z, level, cmdBlockType, direction, command, conditional):
+	def place_cmdblock(x, y, z, level, cmdBlockType, direction, command, conditional, customName=u''):			
 		cb_types = {Builder.cb_impulse:137, Builder.cb_chain:189, Builder.cb_repeat:188}
 		cb_directions = {Builder.y_down:0,Builder.y_up:1,Builder.z_down:2,Builder.z_up:3,Builder.x_down:4,Builder.x_up:5}
 		
 		tileCB = TAG_Compound()
 		tileCB["Command"] = TAG_String(command)
-		tileCB["CustomName"] = TAG_String(u'')
+		tileCB["CustomName"] = TAG_String(customName)
 		tileCB["LPCommandMode"] = TAG_Int(0)
 		tileCB["LPCondionalMode"] = TAG_Byte(0)
 		tileCB["LPRedstoneMode"] = TAG_Byte(0)
@@ -101,7 +101,7 @@ class Builder:
 		if conditional == True:
 			direction += 8 
 		#Wywolanie funkcji wewnatrz drugiej funkcji
-		Builder.place_block(x, y, z, alphaMaterials[cb_types[cmdBlockType], direction], level)#Zwroc uwage na odwolanie sie do odpowiedniego elementu alphaMaterials
+		Builder.place_block(x, y, z, alphaMaterials[cb_types[cmdBlockType], direction], level)
 	place_cmdblock = staticmethod(place_cmdblock)
 
 	
@@ -139,12 +139,12 @@ class Builder:
 		if disabled == True:
 			direction += 8 
 		#Wywolanie funkcji wewnatrz drugiej funkcji
-		Builder.place_block(x, y, z, alphaMaterials[154, direction], level)#Zwroc uwage na odwolanie sie do odpowiedniego elementu alphaMaterials
+		Builder.place_block(x, y, z, alphaMaterials[154, direction], level)
 	place_hooper = staticmethod(place_hooper)
 	
 	
 class Token:
-	state, create_state, position, create_position, custom, create_custom, impulse, create_impulse, repeat, create_repeat, dialog, create_dialog, comment, conditional, new_dialog_chain, command,new_line = range(17)
+	state, create_state, position, create_position, custom, create_custom, impulse, create_impulse, repeat, create_repeat, dialog, create_dialog, comment, conditional, new_dialog_chain, command,new_line, custom_name = range(18)
 	def __init__(self, type=None, value=None, name=None, line=None, file_name=None):
 		self.type = type
 		self.value = value
@@ -153,11 +153,11 @@ class Token:
 		self.line = line
 	
 	def __str__(self):
-		types = ['state', 'create_state', 'position', 'create_position', 'custom', 'create_custom', 'impulse', 'create_impulse', 'repeat', 'create_repeat', 'dialog', 'create_dialog', 'comment', 'conditional', 'new_dialog_chain','command','new_line']
+		types = ['state', 'create_state', 'position', 'create_position', 'custom', 'create_custom', 'impulse', 'create_impulse', 'repeat', 'create_repeat', 'dialog', 'create_dialog', 'comment', 'conditional', 'new_dialog_chain','command','new_line', 'custom_name']
 		return str({'type':types[self.type],'value':self.value,'name':self.name})
 		
 	def __repr__(self):
-		types = ['state', 'create_state', 'position', 'create_position', 'custom', 'create_custom', 'impulse', 'create_impulse', 'repeat', 'create_repeat', 'dialog', 'create_dialog', 'comment', 'conditional', 'new_dialog_chain','command','new_line']
+		types = ['state', 'create_state', 'position', 'create_position', 'custom', 'create_custom', 'impulse', 'create_impulse', 'repeat', 'create_repeat', 'dialog', 'create_dialog', 'comment', 'conditional', 'new_dialog_chain','command','new_line', 'custom_name']
 		return str({'type':types[self.type],'value':self.value,'name':self.name})
 	
 class Parser:
@@ -290,7 +290,7 @@ class Parser:
 		if input.startswith('#') or input == '':
 			return tokens
 		start, start2, command, special, end, comment =  range(6)
-		#start2 - after conditional or new_dialog_chain
+		#start2 - after conditional, new_dialog_chain or nothing (check if commandblocks is named)
 		tokens = []
 		state = start
 		input_len = len(input)
@@ -328,7 +328,7 @@ class Parser:
 							else:
 								break
 					else:
-						state = command
+						state = start2
 						consumed_input = i
 				else:
 					return tokens
@@ -342,6 +342,36 @@ class Parser:
 						i += 1
 						state = comment
 						consumed_input = i
+					elif input[i] == '[':
+						i+=1
+						if i >= input_len: raise Exception('Unexpected end of line '+str(input_line_index)+' in file '+input_file_name)
+						length, _ = Parser.cut_word(input[i:],separators=']',escape_characters='\\',allowed_chars=None)
+						name = input[i:length+i]
+						i += length+1
+						tokens.append(Token(Token.custom_name, name, None, input_line_index, input_file_name))
+
+
+
+						if i >= input_len:
+							tokens.append(Token(Token.command, '', None, input_line_index, input_file_name))
+							state = end
+						else:
+							consumed_input = i
+							for c in input[consumed_input:]:
+								if c in ' \t':
+									i+=1
+								else:
+									break
+							
+							if input[i] == '#':
+								consumed_input = i
+								state = comment
+							elif input[i] == '`':
+								consumed_input = i
+								state = special
+							else:
+								consumed_input = i
+								state = command	
 					else:
 						state = command
 						consumed_input = i
@@ -796,7 +826,7 @@ class Parser:
 				with open(full_item_file_name) as f:
 					line_index = 1
 					for l in f:
-						p = Parser.parse(l,line_index,file_name)
+						p = Parser.parse(l,line_index,full_item_file_name)
 						self.tokens.extend(p)
 						self.tokens.append(Token(Token.new_line, None, None, line_index, full_item_file_name))
 						line_index += 1	
@@ -812,7 +842,7 @@ class Parser:
 		#expect_new_line  = [Token.comment]
 		#tape, value, name
 		expect_comment_or_new_line = (Token.create_state,Token.create_position,Token.create_custom,Token.create_impulse,Token.create_repeat,Token.create_dialog)
-		code_tokens = (Token.state,Token.position,Token.custom,Token.impulse,Token.repeat,Token.dialog,Token.command)
+		code_tokens = (Token.state,Token.position,Token.custom,Token.impulse,Token.repeat,Token.dialog,Token.command, Token.custom_name)
 		lastToken = Token.new_line
 		curr_command_line = []
 		is_first = True
@@ -930,7 +960,7 @@ class Parser:
 					raise Exception('Trying to refer to dialog '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')')	
 			#elif t.type == Token.comment:
 			#	pass
-			elif t.type == Token.command:
+			elif t.type == Token.command or t.type == Token.custom_name:
 				if lastToken in expect_comment_or_new_line:
 					raise Exception('Unexpected "command" token at line'+str(t.line)+' in file '+t.file_name)
 			elif t.type == Token.conditional:
@@ -944,6 +974,8 @@ class Parser:
 		is_new_dialog_chain = False
 		is_conditional = False
 		command = ""
+		customName = ""
+		
 		for element in command_elements:
 			if element.type == Token.state:
 				command = command + ' '.join([str(i) for i in self.states[element.name]])+' '+Parser.state_blocks[element.value]
@@ -970,7 +1002,9 @@ class Parser:
 				is_new_dialog_chain = True
 			elif element.type == Token.command:
 				command += element.value
-		return command, is_conditional, is_new_dialog_chain
+			elif element.type == Token.custom_name:
+				customName = element.value
+		return command, is_conditional, is_new_dialog_chain, customName
 		
 class Planner:
 	zp, zm, up, skip_zp, skip_zm, skip_up = 'zp', 'zm', 'up', 'skip_zp', 'skip_zm', 'skip_up'
@@ -1163,11 +1197,11 @@ class Planner:
 			#zp, zm, up, skip_zp, skip_zm, skip_up
 			for k,v in self.parser.states.items():
 				pos = self.parser.states[k]
-				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[35,0], level)#Wool 0
+				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[22,0], level)#Wool 0
 				
 			for k,v in self.parser.impulse_chains.items():
 				pos = self.parser.impulse_chains[k]['position']
-				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[35,0], level)
+				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[22,0], level)
 				i = 0
 				cmd_source = self.parser.impulse_chains[k]['commands']
 				cx,cy,cz= pos[0], pos[1], pos[2]+1
@@ -1175,18 +1209,18 @@ class Planner:
 					cb_type = Builder.cb_impulse if i==0 else Builder.cb_chain
 					#y_down, y_up, z_down, z_up, x_down, x_up
 					if move == Planner.zp:
-						command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(cmd_source[i])
-						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_up, command, is_conditional)
+						command, is_conditional, is_new_dialog_chain, customName = self.parser.command_to_string(cmd_source[i])
+						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_up, command, is_conditional, customName)
 						i += 1
 						cz += 1
 					elif move == Planner.zm:
-						command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(cmd_source[i])
-						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_down, command, is_conditional)
+						command, is_conditional, is_new_dialog_chain, customName  = self.parser.command_to_string(cmd_source[i])
+						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_down, command, is_conditional, customName)
 						i += 1
 						cz -= 1
 					elif move == Planner.up:
-						command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(cmd_source[i])
-						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.y_up, command, is_conditional)
+						command, is_conditional, is_new_dialog_chain, customName  = self.parser.command_to_string(cmd_source[i])
+						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.y_up, command, is_conditional, customName)
 						i += 1
 						cy += 1
 					elif move == Planner.skip_zp:
@@ -1201,7 +1235,7 @@ class Planner:
 			for k,v in self.parser.repeat_chains.items():
 				
 				pos = self.parser.repeat_chains[k]['position']
-				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[35,0], level)
+				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[22,0], level)
 				i = 0
 				cmd_source = self.parser.repeat_chains[k]['commands']
 				cx,cy,cz= pos[0], pos[1], pos[2]+1
@@ -1209,18 +1243,18 @@ class Planner:
 					cb_type = Builder.cb_repeat if i==0 else Builder.cb_chain
 					#y_down, y_up, z_down, z_up, x_down, x_up
 					if move == Planner.zp:
-						command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(cmd_source[i])
-						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_up, command, is_conditional)
+						command, is_conditional, is_new_dialog_chain, customName  = self.parser.command_to_string(cmd_source[i])
+						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_up, command, is_conditional, customName)
 						i += 1
 						cz += 1
 					elif move == Planner.zm:
-						command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(cmd_source[i])
-						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_down, command, is_conditional)
+						command, is_conditional, is_new_dialog_chain, customName  = self.parser.command_to_string(cmd_source[i])
+						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.z_down, command, is_conditional, customName)
 						i += 1
 						cz -= 1
 					elif move == Planner.up:
-						command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(cmd_source[i])
-						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.y_up, command, is_conditional)
+						command, is_conditional, is_new_dialog_chain, customName  = self.parser.command_to_string(cmd_source[i])
+						Builder.place_cmdblock(cx,cy,cz, level, cb_type, Builder.y_up, command, is_conditional, customName)
 						i += 1
 						cy += 1
 					elif move == Planner.skip_zp:
@@ -1236,11 +1270,11 @@ class Planner:
 			is_first = True
 			for k,v in self.parser.dialogs.items():
 				pos = self.parser.dialogs[k]['position']
-				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[35,0], level)
+				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[22,0], level)
 				cx,cy,cz= pos[0], pos[1], pos[2]
 				i = 0
 				for command_elements in self.parser.dialogs[k]['commands']:
-					command, is_conditional, is_new_dialog_chain = self.parser.command_to_string(command_elements)
+					command, is_conditional, is_new_dialog_chain, customName  = self.parser.command_to_string(command_elements)
 					if is_new_dialog_chain:#Za pierwszym razem ten warunek jest zawsze spelniony ale i=0
 						if i == 1:
 							cz += 2#Pierwszy osdstep jest troche krotszy bo nie trzeba budowac calej struktury
@@ -1255,7 +1289,7 @@ class Planner:
 							Builder.place_cmdblock(cx-1,cy,cz, level, Builder.cb_impulse, Builder.y_up, 'setblock ~2 ~ ~2 air', False)
 							is_first = False
 						cy += 1
-						Builder.place_cmdblock(cx-1,cy,cz, level, Builder.cb_chain, Builder.y_up, command, is_conditional)
+						Builder.place_cmdblock(cx-1,cy,cz, level, Builder.cb_chain, Builder.y_up, command, is_conditional, customName)
 					else:
 						def build_layer(x,y,z, level):
 							Builder.place_block(x, y, z, alphaMaterials[152,0], level)#redstone_block
@@ -1276,7 +1310,7 @@ class Planner:
 							Builder.place_cmdblock(cx-1,cy,cz+2, level, Builder.cb_chain, Builder.y_up, 'setblock ~2 ~-1 ~2 air', False)
 							is_first = False
 						cy += 1
-						Builder.place_cmdblock(cx-1,cy,cz+2, level, Builder.cb_chain, Builder.y_up, command, is_conditional)
+						Builder.place_cmdblock(cx-1,cy,cz+2, level, Builder.cb_chain, Builder.y_up, command, is_conditional, customName)
 		
 		for x in range(box.minx,box.maxx):
 			for y in range(box.miny,box.maxy):
@@ -1342,7 +1376,7 @@ class Planner:
 		
 		
 ########   FILTER CODE   ########################################################################
-displayName = "Nusiq's brfunctions - v0.1"
+displayName = "Nusiq's brfunctions - v1.0"
 
 inputs = (
 	("File path","file-open"),
