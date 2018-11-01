@@ -49,7 +49,7 @@ You don't have to define the area to edit inside project file. If you use the se
 The project file is optional. You can just write all commands in one file and use that instead.
 
 # Some general rules on the construction of syntax
-*This part of the README is so that there is no need to repeat the same things many times. If you are reading the whole thing from top to bottom it can make a little sense to you but it should become more clear later.* **I highly recommend to read this section!**
+*This part of the README is so that there is no need to repeat the same things many times. If you are reading the whole thing from top to bottom it can make a little sense to you but it should become more clear later.* **I highly recommend reading this section!**
 
 - All references and definitions of variables are surrounded with grave accent symbol ( `` ` `` ).
 - If something between grave accents starts with `/` its a definition, if not it's a reference do a value defined earlier.
@@ -102,35 +102,35 @@ You can add names to positions to make your life easier. Example:
 tp @a `p[myPosition]`
 say @e[`p[myPosition]@`,r=5]
 ```
-The tree examples above show different uses of position. The first one is a definition of a position called "myPosition". The second command uses the reference to this position (it will return `1 2 3`). The third command is the selector reference to "myPosition" and it will return "x=1,y=2,z=3".
+The three examples above show different uses of position. The first one is a definition of a position called "myPosition". The second command uses the reference to this position (it will return `1 2 3`). The third command is the selector reference to "myPosition" and it will return "x=1,y=2,z=3".
 ### Position (area)
-Putting 6 values into a position will define an area betweeen two positions. Example:
+Putting 6 values into a position will define an area between two positions. Example:
 ```
 `/position[myArea](1 2 3 11 12 13)`
 fill `p[myArea]` stone
 say @e[`p[myArea]@`]
 ```
-The tree examples above show different uses of position. The first one is a definition of an area called "myArea". The second command uses the reference to this position (it will return `1 2 3 11 12 13`). The third command is the selector reference to "myArea" and it will return "x=1,y=2,z=3,dx=10,dy=10,dz=10".
+The three examples above show different uses of position. The first one is a definition of an area called "myArea". The second command uses the reference to this position (it will return `1 2 3 11 12 13`). The third command is the selector reference to "myArea" and it will return "x=1,y=2,z=3,dx=10,dy=10,dz=10".
 ### Custom
-Custom values are used to add name to any string.
+Custom values are used to add a name to any string.
 ```
 `/custom[myCustomValue](Hello world!)`
 say `c[myCustomValue]`
 ```
-Example above shows two uses of custom value. The first use is the definition. The second commands show how to refere to a custom value (second command will be transformed into `say Hello world!`).
+The example above shows two uses of a custom value. The first use is the definition. The second commands show how to refer to a custom value (the second command will be transformed into `say Hello world!`).
 ## Conditional commandblocks
 If you want to make a commandblock conditional just type `>` before its command. Example:
 ```
 scoreboard players test FAKEPLAYER var 1 1
-> say score of FAKEPLAYER in var scoreboard is 1
+> say the score of FAKEPLAYER in var scoreboard is 1
 ```
-The second command from example above is conditional.
-## Setting name of commandblock.
-If you want to make a commandblock with a custom name just type the name inside squere brackeds before the commands. Example
+The second command from the example above is conditional.
+## Setting name of commandblocks
+If you want to make a commandblock with a custom name just type the name inside square brackets before the commands. Example
 ```
 scoreboard players test FAKEPLAYER var 1 1
->[CustomName] say score of FAKEPLAYER in var scoreboard is 1
-[CustomName] say another commandblock with custom name.
+>[CustomName] say the score of FAKEPLAYER in var scoreboard is 1
+[CustomName] say another commandblock with a custom name.
 ```
 
 ## Comments
