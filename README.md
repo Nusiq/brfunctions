@@ -48,7 +48,7 @@ You don't have to define the area to edit inside project file. If you use the se
 ### The secret third way - not using the project file.
 The project file is optional. You can just write all commands in one file and use that instead.
 
-# Some general rules on the construction of syntax
+## Some general rules on the construction of syntax
 *This part of the README is so that there is no need to repeat the same things many times. If you are reading the whole thing from top to bottom it can make a little sense to you but it should become more clear later.* **I highly recommend reading this section!**
 
 - All references and definitions of variables are surrounded with grave accent symbol ( `` ` `` ).
