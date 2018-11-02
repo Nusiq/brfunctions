@@ -118,7 +118,7 @@ Custom values are used to add a name to any string.
 say `c[myCustomValue]`
 ```
 The example above shows two uses of a custom value. The first use is the definition. The second commands show how to refer to a custom value (the second command will be transformed into `say Hello world!`).
-## State **DEPRECETED**
+### States **DEPRECETED**
 States were designed to add an easy way to store a value (for example a state of the mechanism). The release of scoreboards made them obsolete. The states record their value by placing the appropriate block in the right place. You don't need to know what kind of block is it and where it is. You can refer to it by its name and numerical value. Example:
 ```
 `/state[myState]`
