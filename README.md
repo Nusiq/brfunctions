@@ -118,6 +118,16 @@ Custom values are used to add a name to any string.
 say `c[myCustomValue]`
 ```
 The example above shows two uses of a custom value. The first use is the definition. The second commands show how to refer to a custom value (the second command will be transformed into `say Hello world!`).
+## State **DEPRECETED**
+States were designed to add an easy way to store a value (for example a state of the mechanism). The release of scoreboards made them obsolete. The states record their value by placing the appropriate block in the right place. You don't need to know what kind of block is it and where it is. You can refer to it by its name and numerical value. Example:
+```
+`/state[myState]`
+`/state[myStateWithCoordinates](1 2 3)`
+setblock `state[myState](5)`
+testforblock `state[myState](3)`
+```
+The first two lines show how to define states. The first method puts a block to save the state in an unknown position. The second way of defining state is useful when you want to store a state in a certain position. The other two lines of code show how to set and get the value of the state. States can store values from 0 to 31.
+
 ## Conditional commandblocks
 If you want to make a commandblock conditional just type `>` before its command. Example:
 ```
