@@ -15,7 +15,7 @@ Brfunctions is an MCEdit filter for placing down commandblocks on Minecraft bedr
 
 # How to use it?
 ## Project file
-The project file is a JSON file which tells the MCEdit filter which files should be used to place down commandblocks and where to place them. It can be written in two different ways.
+The project file is a JSON file which tells the MCEdit filter which files should be used to place down commandblocks and where to place them. If there is a conflict between options selected in MCEdit filter and the selected project file, options in project file are always more important. It can be written in two different ways.
 #### The first way - the object with information about the area to edit and the list of files to use:
 Example:
 ```
@@ -27,10 +27,11 @@ Example:
         "file3.brfunction",
         "file4.brfunction",
         "file5.brfunction"
-    ]
+    ],
+    "floor_height":8
 }
 ```
-A project file like that would place down commands from files on the "files" list in the area between coordinates x=1,y=2,z=3 and x=40,y=50,z=60. The location of project file is used as root location for serching for files on the "files" list.
+A project file like that would place down commands from files on the "files" list in the area between coordinates x=1,y=2,z=3 and x=40,y=50,z=60. The height of one floor of commandblock structures is set to 8 blocks. The location of project file is used as root location for serching for files on the "files" list.
 
 #### The second way - the list of files.
 Example:
