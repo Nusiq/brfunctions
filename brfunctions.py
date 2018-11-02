@@ -179,6 +179,7 @@ class Parser:
 		self.dialogs = {}
 		self.tokens = []
 		self.box = None
+		self.floor_height = None
 	def parse_coordinates(command, count=3,allow_fraction=True):
 		def parse_coordinate(command,allow_fraction=True):
 			start, type,sign, integer, fraction = range(5)
@@ -816,6 +817,8 @@ class Parser:
 				self.box.maxy = files_list['area'][1] if files_list['area'][1] > files_list['area'][4] else files_list['area'][4]
 				self.box.maxz = files_list['area'][2] if files_list['area'][2] > files_list['area'][5] else files_list['area'][5]
 				print str(self.box.minx) + ' ' + str(self.box.miny) + ' ' + str(self.box.minz) + ' | ' + str(self.box.maxx) + ' ' + str(self.box.maxy) + ' ' + str(self.box.maxz)
+				if 'floor_height' in files_list.keys():
+					self.floor_height = files_list['floor_height']
 				files_list = files_list['files']
 			else:
 				raise Exception('Invalid project file structure. '+type(files_list))
@@ -1128,45 +1131,70 @@ class Planner:
 
 				
 				
-	def plan_and_build(self,box, level, floor_block):
+	def plan_and_build(self,box, level, floor_block, floor_height=255):
 		limx = box.maxx-box.minx
 		limy = box.maxy-box.miny
 		limz = box.maxz-box.minz
+		floor_height = floor_height if floor_height < limy else limy
+		lim_n_floors = int(limy/floor_height)
 		
 		impulse_chains_projects = {}
 		repeat_chains_projects = {}
 		
-		required_x = 0
+		required_x = []
 		
 		
+		#Checking if there is enough space for STATES (wool blocks)
 		if limx*(limy-1) < self.states:
 			raise Exception('Not enough space for states (increase X size)' )
 		
+		
+		#Checking if there is enough space for command structures
 		for k,v in self.impulse_chains.items():
-			required_x += 2
-			plan = self.plan_chain_space(v, limy-1, limz-4)
+			#required_x += 2
+			required_x.append(2)
+			#plan = self.plan_chain_space(v, limy-1, limz-4)
+			plan = self.plan_chain_space(v, floor_height-1, limz-4)
 			if plan == None:
 				raise Exception('Not enough space for "'+k+'" impulse chain (increase Z size)')
 			impulse_chains_projects[k] = plan
 			
 		for k,v in self.repeat_chains.items():
-			required_x += 2
-			plan = self.plan_chain_space(v, limy-1, limz-4)
+			#required_x += 2
+			required_x.append(2)
+			#plan = self.plan_chain_space(v, limy-1, limz-4)
+			plan = self.plan_chain_space(v, floor_height-1, limz-4)
 			if plan == None:
 				raise Exception('Not enough space for "'+k+'" repeating chain (increase Z size)')
 			repeat_chains_projects[k] = plan
 			
 		for k,v in self.dialogs.items():
-			required_x += 4
-			if not self.is_space_for_dialog(v,limy-1, limz-3):
+			#required_x += 4
+			required_x.append(4)
+			#if not self.is_space_for_dialog(v,limy-1, limz-3):
+			if not self.is_space_for_dialog(v,floor_height-1, limz-3):
 				raise Exception('Not enough space for "'+k+'" dialog chain (increase Y or Z size)')
+
+		if 4 > limx:
+			raise Exception('Box to small (increase X size)')
 			
-		if required_x > limx:
-			raise Exception('Box to small (increase Z size)')
-			
+		required_floors = 1
+		curr_x = 0
+		for i in required_x:
+			if curr_x+i > limx:
+				curr_x = i
+				required_floors += 1
+				if required_floors > lim_n_floors:
+					raise Exception('Box to small (you need more or biger floors)')
+			else:
+				curr_x += i
+
+		
+		#Depth of placing states and chains
 		chain_z = box.minz + 3
 		state_z = box.minz
 		
+		#Calculating states positions
 		state_positions = []
 		for x in range(limx):
 			for y in range(limy-1):
@@ -1174,21 +1202,32 @@ class Planner:
 		i = 0 
 		for k,v in self.parser.states.items():
 			if self.parser.states[k] == None:
-				self.parser.states[k] = [state_positions[i][0]+box.minx,state_positions[i][1]+box.miny,state_z]
+				self.parser.states[k] = [state_positions[i][0]+box.minx, state_positions[i][1]+box.miny, state_z]
 				i += 1
-				
+		
+		#Calculationg command structures positions
 		curr_x = 0
+		curr_floor = 0
 		for k,v in self.parser.impulse_chains.items():
-			self.parser.impulse_chains[k]['position'] = [curr_x+box.minx,box.miny+1,chain_z]
+			if curr_x+2 > limx:
+				curr_x = 0
+				curr_floor +=1
+			self.parser.impulse_chains[k]['position'] = [curr_x+box.minx, box.miny+(curr_floor*floor_height)+1, chain_z]
 			curr_x += 2
 		
 		for k,v in self.parser.repeat_chains.items():
-			self.parser.repeat_chains[k]['position'] = [curr_x+box.minx,box.miny+1,chain_z]
+			if curr_x+2 > limx:
+				curr_x = 0
+				curr_floor +=1
+			self.parser.repeat_chains[k]['position'] = [curr_x+box.minx, box.miny+(curr_floor*floor_height)+1, chain_z]
 			curr_x += 2
 			
 		curr_x += 1
 		for k,v in self.parser.dialogs.items():
-			self.parser.dialogs[k]['position'] = [curr_x+box.minx,box.miny+1,chain_z]
+			if curr_x+4 > limx:
+				curr_x = 0
+				curr_floor +=1
+			self.parser.dialogs[k]['position'] = [curr_x+box.minx, box.miny+(curr_floor*floor_height)+1, chain_z]
 			curr_x += 4
 		
 		
@@ -1197,7 +1236,7 @@ class Planner:
 			#zp, zm, up, skip_zp, skip_zm, skip_up
 			for k,v in self.parser.states.items():
 				pos = self.parser.states[k]
-				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[22,0], level)#Wool 0
+				Builder.place_block(pos[0], pos[1], pos[2], alphaMaterials[35,0], level)#Wool 0
 				
 			for k,v in self.parser.impulse_chains.items():
 				pos = self.parser.impulse_chains[k]['position']
@@ -1315,7 +1354,7 @@ class Planner:
 		for x in range(box.minx,box.maxx):
 			for y in range(box.miny,box.maxy):
 				for z in range(box.minz,box.maxz):
-					if y == box.miny:
+					if ((y-box.miny)%floor_height == 0 and box.minz+2 <= z) or (y==box.miny):
 						Builder.place_block(x, y, z, floor_block, level)
 					else:
 						Builder.place_block(x, y, z, alphaMaterials[0,0], level)
@@ -1376,11 +1415,12 @@ class Planner:
 		
 		
 ########   FILTER CODE   ########################################################################
-displayName = "Nusiq's brfunctions - v1.0"
+displayName = "Nusiq's brfunctions - v1.1"
 
 inputs = (
 	("File path","file-open"),
-	("Floor block", alphaMaterials[159,0])#White stained clay
+	("Floor block", alphaMaterials[159,0]),#White stained clay
+	("Floor height", (1, 255, 255))
 	#("Kierunek", tuple(Builder.direction.keys())),
 	#("Typ", tuple(Builder.type.keys())),
 	#("Conditional", False)
@@ -1391,10 +1431,11 @@ def perform(level, box, options):
 	parser.parse_file(str(options["File path"]))
 	planner = Planner(parser)
 	floor_block = options["Floor block"]
-	if parser.box != None:
-		planner.plan_and_build(parser.box , level, floor_block)
-	else:
-		planner.plan_and_build(box, level, floor_block)
+	
+	mybox = parser.box if parser.box != None else box
+	myFloorHeight = parser.floor_height if parser.floor_height != None else options["Floor height"]
+	
+	planner.plan_and_build(mybox, level, floor_block, myFloorHeight)
 	
 
 		
