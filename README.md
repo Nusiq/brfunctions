@@ -146,6 +146,6 @@ scoreboard players test FAKEPLAYER var 1 1
 ## Comments
 Everything after `#` until the end of the line is a comment.
 # Content
-brfunctions.py - the filter.  
-tokens.py - old description of custom syntax.
-highlight.xml - syntax highlighting for Notepad++.  
+- brfunctions.py - the filter.  
+- tokens.py - old description of custom syntax.
+- highlight.xml - syntax highlighting for Notepad++.  
