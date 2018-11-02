@@ -128,14 +128,15 @@ testforblock `state[myState](3)`
 ```
 The first two lines show how to define states. The first method puts a block to save the state in an unknown position. The second way of defining state is useful when you want to store a state in a certain position. The other two lines of code show how to set and get the value of the state. States can store values from 0 to 31.
 
-## Conditional commandblocks
+## Other elements of the syntax
+### Conditional commandblocks
 If you want to make a commandblock conditional just type `>` before its command. Example:
 ```
 scoreboard players test FAKEPLAYER var 1 1
 > say the score of FAKEPLAYER in var scoreboard is 1
 ```
 The second command from the example above is conditional.
-## Setting name of commandblocks
+### Setting name of commandblocks
 If you want to make a commandblock with a custom name just type the name inside square brackets before the commands. Example
 ```
 scoreboard players test FAKEPLAYER var 1 1
@@ -143,7 +144,7 @@ scoreboard players test FAKEPLAYER var 1 1
 [CustomName] say another commandblock with a custom name.
 ```
 
-## Comments
+### Comments
 Everything after `#` until the end of the line is a comment.
 # Content
 - brfunctions.py - the filter.  
