@@ -28,10 +28,12 @@ Example:
         "file4.brfunction",
         "file5.brfunction"
     ],
-    "floor_height":8
+    "floor_height":8,
+    "functions_path":"functions",
+    "behavior_pack_uuid":"48b03a36-1349-4106-bd90-688c3abfe915"
 }
 ```
-A project file like that would place down commands from files on the "files" list in the area between coordinates x=1,y=2,z=3 and x=40,y=50,z=60. The height of one floor of commandblock structures is set to 8 blocks. The location of project file is used as root location for serching for files on the "files" list.
+A project file like that would place down commands from files on the "files" list in the area between coordinates x=1,y=2,z=3 and x=40,y=50,z=60. The height of one floor of commandblock structures is set to 8 blocks. The location of project file is used as root location for serching for files on the "files" list. "functions_path" is a path relative to project file that leads to .mcfunctions used in the project. "behavior_pack_uuid" is a UUID of behaviorpack used in a project. The behaviorpack can be either in world files or in development_behavior_pack. If you want to use .mcfunctions in your project you need to specify both "function_path" and "behavior_pack_uuid". You can refere to variables defined in brfunctions in your mcfunctions files but you cannot define new variables in mcfunctions.
 
 #### The second way - the list of files.
 Example:
