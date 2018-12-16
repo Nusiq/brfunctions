@@ -860,16 +860,17 @@ class Parser:
 				cut = len(self.functions_path)+1
 				for root, dirs, files in os.walk(self.functions_path):
 					for name in files:
-						source = os.path.join(root, name)
-						if source not in self.functions:
-							self.functions[source] = {'commands':[]}
-						with open(source) as f:
-							line_index = 1
-							for l in f:
-								p = Parser.parse(l,line_index,source)
-								self.functions_tokens.extend(p)
-								self.functions_tokens.append(Token(Token.new_line, None, None, line_index, source))
-								line_index += 1	
+						if name.endswith('.mcfunction'):
+							source = os.path.join(root, name)
+							if source not in self.functions:
+								self.functions[source] = {'commands':[]}
+							with open(source) as f:
+								line_index = 1
+								for l in f:
+									p = Parser.parse(l,line_index,source)
+									self.functions_tokens.extend(p)
+									self.functions_tokens.append(Token(Token.new_line, None, None, line_index, source))
+									line_index += 1	
 			
 			
 			
@@ -1581,7 +1582,7 @@ class Planner:
 		
 		
 ########   FILTER CODE   ########################################################################
-displayName = "Nusiq's brfunctions - v1.3"
+displayName = "Nusiq's brfunctions - v1.4"
 
 inputs = (
 	("File path","file-open"),
