@@ -14,7 +14,6 @@ import json
 import string
 import os
 
-
 class CustomBox:
 	def __init__(self):
 		self.minx = None
@@ -178,8 +177,14 @@ class Parser:
 		self.repeat_chains = {}
 		self.dialogs = {}
 		self.tokens = []
+		self.functions_tokens = []
+		self.functions = {}
 		self.box = None
 		self.floor_height = None
+		self.behavior_pack_uuid = None
+		self.functions_path = None
+		
+		
 	def parse_coordinates(command, count=3,allow_fraction=True):
 		def parse_coordinate(command,allow_fraction=True):
 			start, type,sign, integer, fraction = range(5)
@@ -798,33 +803,48 @@ class Parser:
 				
 	def parse_file(self, file_name):
 		use_as_project = True
-		files_list = []
+		project_data = None
+		
+		###Test if file is json project file
 		try:
 			with open(file_name) as projectFile:
-				files_list = json.load(projectFile)	
+				project_data = json.load(projectFile)	
 		except:
 			use_as_project = False
-		if  isinstance(files_list, dict) == False:
-			if isinstance(files_list, list) == False:
-				raise Exception('Invalid project file structure. '+type(files_list)+' Code:x6ibzz')
-		else:
-			if 'files' in files_list.keys() and 'area' in files_list.keys():
+		
+		
+		
+		if use_as_project:###The file is a json project file
+			if  isinstance(project_data, dict):
+				if ('files' not in project_data.keys()) or ('area' not in project_data.keys()):
+					raise Exception('Invalid project file structure. '+type(project_data)+' Code:wiv5af')
+					
 				self.box  = CustomBox()
-				self.box.minx = files_list['area'][0] if files_list['area'][0] < files_list['area'][3] else files_list['area'][3]
-				self.box.miny = files_list['area'][1] if files_list['area'][1] < files_list['area'][4] else files_list['area'][4]
-				self.box.minz = files_list['area'][2] if files_list['area'][2] < files_list['area'][5] else files_list['area'][5]
-				self.box.maxx = files_list['area'][0] if files_list['area'][0] > files_list['area'][3] else files_list['area'][3]
-				self.box.maxy = files_list['area'][1] if files_list['area'][1] > files_list['area'][4] else files_list['area'][4]
-				self.box.maxz = files_list['area'][2] if files_list['area'][2] > files_list['area'][5] else files_list['area'][5]
-				print str(self.box.minx) + ' ' + str(self.box.miny) + ' ' + str(self.box.minz) + ' | ' + str(self.box.maxx) + ' ' + str(self.box.maxy) + ' ' + str(self.box.maxz)
-				if 'floor_height' in files_list.keys():
-					self.floor_height = files_list['floor_height']
-				files_list = files_list['files']
+				self.box.minx = project_data['area'][0] if project_data['area'][0] < project_data['area'][3] else project_data['area'][3]
+				self.box.miny = project_data['area'][1] if project_data['area'][1] < project_data['area'][4] else project_data['area'][4]
+				self.box.minz = project_data['area'][2] if project_data['area'][2] < project_data['area'][5] else project_data['area'][5]
+				self.box.maxx = project_data['area'][0] if project_data['area'][0] > project_data['area'][3] else project_data['area'][3]
+				self.box.maxy = project_data['area'][1] if project_data['area'][1] > project_data['area'][4] else project_data['area'][4]
+				self.box.maxz = project_data['area'][2] if project_data['area'][2] > project_data['area'][5] else project_data['area'][5]
+				
+				###Save additional options data
+				if 'floor_height' in project_data.keys():
+					self.floor_height = project_data['floor_height']
+				if 'behavior_pack_uuid' in project_data.keys():
+					self.behavior_pack_uuid = project_data['behavior_pack_uuid']	
+				if 'functions_path' in project_data.keys():
+					self.functions_path = project_data['functions_path']					
+			elif isinstance(project_data, list):
+				project_data = {'files':project_data}
 			else:
-				raise Exception('Invalid project file structure. '+type(files_list)+' Code:wiv5af')
-		if use_as_project:
+				raise Exception('Invalid project file structure. '+type(project_data)+' Code:x6ibzz')
+		
 			path = os.path.split(file_name)[0]
-			for item_file_name in files_list:
+			if self.functions_path != None:
+				self.functions_path = os.path.join(path, self.functions_path)
+			
+			##Get tokens from brfunctions
+			for item_file_name in project_data['files']:
 				full_item_file_name = path+'/'+item_file_name
 				with open(full_item_file_name) as f:
 					line_index = 1
@@ -833,7 +853,28 @@ class Parser:
 						self.tokens.extend(p)
 						self.tokens.append(Token(Token.new_line, None, None, line_index, full_item_file_name))
 						line_index += 1	
-		else:
+						
+						
+			##Get tokens from mcfunctions
+			if self.behavior_pack_uuid != None and self.functions_path != None:#else: nothing to copy				
+				cut = len(self.functions_path)+1
+				for root, dirs, files in os.walk(self.functions_path):
+					for name in files:
+						source = os.path.join(root, name)
+						if source not in self.functions:
+							self.functions[source] = {'commands':[]}
+						with open(source) as f:
+							line_index = 1
+							for l in f:
+								p = Parser.parse(l,line_index,source)
+								self.functions_tokens.extend(p)
+								self.functions_tokens.append(Token(Token.new_line, None, None, line_index, source))
+								line_index += 1	
+			
+			
+			
+			
+		else:###The file is a brfunction
 			with open(file_name) as f:
 				line_index = 1
 				for l in f:
@@ -841,16 +882,21 @@ class Parser:
 					self.tokens.extend(p)
 					self.tokens.append(Token(Token.new_line, None, None, line_index, file_name))
 					line_index += 1
+		
+		
+		
 		#tape, value, name
 		expect_comment_or_new_line = (Token.create_state,Token.create_position,Token.create_custom,Token.create_impulse,Token.create_repeat,Token.create_dialog)
 		code_tokens = (Token.state,Token.position,Token.custom,Token.impulse,Token.repeat,Token.dialog,Token.command, Token.custom_name)
+		
+		
+		#####PARSE BRFUNCTIONS
 		lastToken = Token.new_line
 		curr_command_line = []
 		is_first = True
 		last_command_group = None
-		last_command_group_type = None
 		new_dialog_chain_started = False
-		for t in self.tokens:##################DEFINITIONS
+		for t in self.tokens:##################DEFINITIONS - collets all definitions and checks if tokens are in correct order
 			if t.type == Token.create_state:
 				if lastToken != Token.new_line:
 					raise Exception('Unexpected "create_state" token at line'+str(t.line)+' in file '+t.file_name+' Code:bu20ol')
@@ -928,7 +974,7 @@ class Parser:
 			lastToken = t.type
 		
 		lastToken = Token.new_line
-		for t in self.tokens:###############USING SAVED DATA
+		for t in self.tokens:###############USING SAVED DATA - checks if there are no references to non-existing variables
 			if t.type == Token.state:
 				if lastToken in expect_comment_or_new_line:
 					raise Exception('Unexpected "state" token at line'+str(t.line)+' in file '+t.file_name+' Code:gnazon')
@@ -970,6 +1016,64 @@ class Parser:
 			elif t.type == Token.new_line:
 				pass
 			lastToken = t.type
+			
+			
+		#####PARSE MCFUNCTIONS
+		curr_command_line = []
+		new_dialog_chain_started = False
+		for t in self.functions_tokens:##################DEFINITIONS - collets all mcfunctions commands, make sure there is no variable definitions in mcfunctions, checks if there are no references to non-existing variables
+			if t.type == Token.create_state:
+				raise Exception('States cannot be defined inside mcfunctions. Line:'+str(t.line)+' File: '+t.file_name+' Code:evdlyg')
+			elif t.type == Token.create_position:
+				raise Exception('Positions cannot be defined inside mcfunctions. Line:'+str(t.line)+' File: '+t.file_name+' Code:9uqqq4')
+			elif t.type == Token.create_custom:
+				raise Exception('Custom values cannot be defined inside mcfunctions. Line:'+str(t.line)+' File: '+t.file_name+' Code:i1kiv1')
+			elif t.type == Token.create_impulse:#IMPULSE CHAIN
+				raise Exception('Impulse chains cannot be defined inside mcfunctions. Line:'+str(t.line)+' File: '+t.file_name+' Code:qfj4lo')
+			elif t.type == Token.create_repeat:#REPEATING CHAIN
+				raise Exception('Repeating chains cannot be defined inside mcfunctions. Line:'+str(t.line)+' File: '+t.file_name+' Code:j355vi')
+			elif t.type == Token.create_dialog:#DIALOG CHAIN
+				raise Exception('Dialog chains cannot be defined inside mcfunctions. Line:'+str(t.line)+' File: '+t.file_name+' Code:y7jdhd')
+			elif t.type in code_tokens:
+				if t.type == Token.state:
+					if t.name not in self.states:
+						raise Exception('Trying to refer to state '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')'+' Code:q30qmo')
+				elif t.type == Token.position:
+					if t.name not in self.positions:
+						raise Exception('Trying to refer to position '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')'+' Code:1vdck4')
+				elif t.type == Token.custom:
+					if t.name not in self.custom_values:
+						raise Exception('Trying to refer to custom value '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')'+' Code:zotsyv')
+				elif t.type == Token.impulse:
+					if t.name not in self.impulse_chains:
+						raise Exception('Trying to refer to impulse chain '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')'+' Code:h0qy8l')
+				elif t.type == Token.repeat:
+					if t.name not in self.repeat_chains:
+						raise Exception('Trying to refer to repeating chain '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')'+' Code:cv0r5q')
+				elif t.type == Token.dialog:
+					if t.name not in self.dialogs:
+						raise Exception('Trying to refer to dialog '+t.name+' but it has on definition (line '+str(t.line)+' in file '+t.file_name+')'+' Code:dpyerm')
+				elif t.type == Token.custom_name:
+					raise Exception('Unexpected "custom_name" token inside mcfunction file. Line:'+str(t.line)+' File: '+t.file_name+' Code:qtm2li')
+				curr_command_line.append(t)
+			elif t.type == Token.new_dialog_chain:
+				raise Exception('Unexpected "new_dialog_chain" token inside mcfunction file. Line:'+str(t.line)+' File: '+t.file_name+' Code:bi9c9t')
+			elif t.type == Token.conditional:
+				raise Exception('Unexpected conditional command inside mcfunction file. Line:'+str(t.line)+' File: '+t.file_name+' Code:wf9p30')
+			elif t.type == Token.new_line:
+				add_to_chain = True
+				if len(curr_command_line) == 1:
+					if curr_command_line[0].type == Token.command:
+						if curr_command_line[0].value.strip() == '':
+							add_to_chain = False
+				if len(curr_command_line) == 0:
+					add_to_chain = False
+				if add_to_chain:
+					self.functions[t.file_name]['commands'].append(curr_command_line)
+				curr_command_line = []
+
+	
+	
 	
 	def command_to_string(self,command_elements):
 		is_new_dialog_chain = False
@@ -1358,6 +1462,70 @@ class Planner:
 						Builder.place_block(x, y, z, alphaMaterials[0,0], level)
 		
 		build(level, floor_block)
+	
+		
+	def get_bp_path(self, world_path):
+		bpuuid = self.parser.behavior_pack_uuid
+		funcpath = self.parser.functions_path
+		
+		if not isinstance(bpuuid, str) and not isinstance(bpuuid, unicode): raise Exception('Behavior pack UUID in project file must be a string. Code:owfuou')
+		if not isinstance(funcpath, str) and not isinstance(funcpath, unicode): raise Exception('Path to functions in project file must be a string. Code:7u4lpj')
+		if not os.path.isdir(funcpath): raise Exception('Path to functions doesn\'t exists. Code:xp833b')
+		
+		###FIND BEHAVIORPACK PATH
+		def serch(root,uuid):
+			if os.path.isdir(root):
+				root=[os.path.join(root, i) for i in os.listdir(root) if os.path.isdir(os.path.join(root,i))]
+				for bp_path in root:
+					manifest_file_path = os.path.join(bp_path,'manifest.json')
+					if os.path.isfile(manifest_file_path):
+						try:
+							with open(manifest_file_path) as manifest_file:
+								project_data = json.load(manifest_file)
+								if 'header' not in project_data: continue
+								if 'uuid' not in project_data['header']: continue
+								if project_data['header']['uuid'] == uuid:
+									return os.path.join(bp_path, 'functions')
+								else:
+									continue
+						except:
+							continue
+			return None
+		bp_funcpath  = serch(os.path.join(world_path,'behavior_packs'), bpuuid)
+		if bp_funcpath == None:
+			dev_bp_path = os.path.dirname(world_path)#minecraftWorlds
+			if not dev_bp_path.endswith('minecraftWorlds'): raise Exception('Behaviorpack with UUID '+bpuuid+' doesn\'t exist. Code:u30m8n')
+			
+			dev_bp_path = os.path.dirname(dev_bp_path)#com.mojang
+			if not dev_bp_path.endswith('com.mojang'): raise Exception('Behaviorpack with UUID '+bpuuid+' doesn\'t exist. Code:nz8rj9')
+			dev_bp_path = os.path.join(dev_bp_path,'development_behavior_packs')#development_behavior_packs
+			bp_funcpath = serch(dev_bp_path, bpuuid)
+		if bp_funcpath == None: raise Exception('Behaviorpack with UUID '+bpuuid+' doesn\'t exist. Code:47u2aq')
+		#BEHAVIORPACK FUNCTIONS PATH IS KNOWN ( bp_funcpath )
+		return bp_funcpath
+	
+	def copy_functions(self, world_path):
+		bpuuid = self.parser.behavior_pack_uuid
+		funcpath = self.parser.functions_path
+		if bpuuid == None or funcpath == None:
+			return None; #Nothing to copy
+		
+		bp_funcpath = self.get_bp_path(world_path)
+		
+		cut = len(funcpath)+1
+		
+		#source - source file path, v - dictionary with list of commands form the file in v['commands']
+		for source,v in self.parser.functions.items():
+			target = os.path.join(bp_funcpath, source[cut:])
+			if not os.path.exists(os.path.dirname(target)):
+				os.makedirs(os.path.dirname(target))
+
+			with open(target,'w') as f:
+				for line in v['commands']:
+					f.write(self.parser.command_to_string(line)[0]+'\n')
+			
+		
+		
 		
 	def analyse(self):
 		for name, chain in self.parser.impulse_chains.items():#Create list of lengths of conditional chains needed for impulse chains
@@ -1413,15 +1581,12 @@ class Planner:
 		
 		
 ########   FILTER CODE   ########################################################################
-displayName = "Nusiq's brfunctions - v1.2"
+displayName = "Nusiq's brfunctions - v1.3"
 
 inputs = (
 	("File path","file-open"),
-	("Floor block", alphaMaterials[159,0]),#White stained clay
+	("Floor block", alphaMaterials[169,0]),#Sea lantern
 	("Floor height", (255, 1, 255))
-	#("Kierunek", tuple(Builder.direction.keys())),
-	#("Typ", tuple(Builder.type.keys())),
-	#("Conditional", False)
 )	
 def perform(level, box, options):
 	os.system('cls')
@@ -1434,7 +1599,7 @@ def perform(level, box, options):
 	myFloorHeight = parser.floor_height if parser.floor_height != None else options["Floor height"]
 	
 	planner.plan_and_build(mybox, level, floor_block, myFloorHeight)
-	
+	planner.copy_functions(level.filename)
 
 		
 		
