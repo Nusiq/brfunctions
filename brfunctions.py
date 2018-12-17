@@ -13,6 +13,8 @@ from pymclevel import alphaMaterials
 import json
 import string
 import os
+import hashlib
+import errno
 
 class CustomBox:
 	def __init__(self):
@@ -1505,7 +1507,7 @@ class Planner:
 		#BEHAVIORPACK FUNCTIONS PATH IS KNOWN ( bp_funcpath )
 		return bp_funcpath
 	
-	def copy_functions(self, world_path):
+	def create_functions(self, world_path):
 		bpuuid = self.parser.behavior_pack_uuid
 		funcpath = self.parser.functions_path
 		if bpuuid == None or funcpath == None:
@@ -1513,19 +1515,56 @@ class Planner:
 		
 		bp_funcpath = self.get_bp_path(world_path)
 		
-		cut = len(funcpath)+1
 		
+		history = None
+		#Find files edited with external progrmas
+		try:
+			with open(os.path.join(funcpath,'brfunction_last_edit.json'), 'r') as f:
+				history = json.load(f)
+		except IOError as e:
+			if e.errno != errno.ENOENT:#Pass only if error is: "No such file or directory"
+				raise e
+			
+		if history != None:
+			#k - file path, v - object with data describing the file 
+			for k,v in history.items():
+				try:
+					with open(k, 'r') as f:
+						hasher = hashlib.md5()
+						hasher.update(f.read())
+						if v['md5'] != hasher.hexdigest():
+							raise Exception('File '+k+' has been modified with external application. Delete the file and run filter again if you are sure that you want apply changes to it. Code:cs4kwg')
+					try:
+						os.remove(k)
+					except OSError:
+						pass
+				except IOError as e:
+					if e.errno != errno.ENOENT:#Pass only if error is: "No such file or directory"
+						raise e
+			
+			
+			
+		#Edit files
+		cut = len(funcpath)+1
+		new_history = {}
 		#source - source file path, v - dictionary with list of commands form the file in v['commands']
 		for source,v in self.parser.functions.items():
 			target = os.path.join(bp_funcpath, source[cut:])
 			if not os.path.exists(os.path.dirname(target)):
 				os.makedirs(os.path.dirname(target))
-
+			
+			file_content = ''
 			with open(target,'w') as f:
 				for line in v['commands']:
-					f.write(self.parser.command_to_string(line)[0]+'\n')
-			
+					file_content += self.parser.command_to_string(line)[0]+'\n'
+				f.write(file_content)
+				hasher = hashlib.md5()
+				hasher.update(file_content)
+				new_history[target]={'md5':hasher.hexdigest()}
 		
+		#Save history of edits
+		with open(os.path.join(funcpath,'brfunction_last_edit.json'), 'w') as f:
+			json.dump(new_history, f)
 		
 		
 	def analyse(self):
@@ -1582,7 +1621,7 @@ class Planner:
 		
 		
 ########   FILTER CODE   ########################################################################
-displayName = "Nusiq's brfunctions - v1.4"
+displayName = "Nusiq's brfunctions - v1.5"
 
 inputs = (
 	("File path","file-open"),
@@ -1600,7 +1639,7 @@ def perform(level, box, options):
 	myFloorHeight = parser.floor_height if parser.floor_height != None else options["Floor height"]
 	
 	planner.plan_and_build(mybox, level, floor_block, myFloorHeight)
-	planner.copy_functions(level.filename)
+	planner.create_functions(level.filename)
 
 		
 		
