@@ -1529,7 +1529,7 @@ class Parser(object):
 
     def parse_all(self):
         for content, name, metadata in \
-                self.project_data_repository.get_brfunction_generator():
+                self.project_data_repository.brfunction_generator():
             # content = file line, name = file name, metadata = file line index
             self.tokens.extend(Parser.parse(content, name, metadata))
             self.tokens.append(
@@ -1537,7 +1537,7 @@ class Parser(object):
             )
 
         for content, name, metadata in \
-                self.project_data_repository.get_mcfunction_generator():
+                self.project_data_repository.mcfunction_generator():
             # content = file line, name = file name, metadata = file line index
             if name not in self.functions:
                 self.functions[name] = {'commands': []}

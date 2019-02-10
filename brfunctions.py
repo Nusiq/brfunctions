@@ -8,7 +8,7 @@ import os
 from brfunc_parsing import Parser
 from brfunc_planning import Planner
 from pymclevel import alphaMaterials  # pylint: disable=import-error
-from brfunc_repository import FilePDR
+from brfunc_repository import FilePDR, MultipleSourcePDR
 
 displayName = "Nusiq's brfunctions - v1.6.0"
 
@@ -21,11 +21,12 @@ inputs = (
 
 def perform(level, box, options):
     os.system('cls')
-    project_data_repository = FilePDR(str(options["File path"]),
-                                      options["Floor block"],
-                                      level, box,
-                                      # options["Floor height"],
-                                      )
+    project_data_repository = MultipleSourcePDR(
+        FilePDR(
+            str(options["File path"]), options["Floor block"],
+            level, box,  # options["Floor height"],
+        )
+    )
     parser = Parser(project_data_repository)
     parser.parse_all()
 

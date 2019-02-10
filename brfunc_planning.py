@@ -611,35 +611,36 @@ class Planner(object):
 
         bp_funcpath = self.get_bp_path(world_path)
 
+        # Load history of last edit.
         history = None
-        # Find files edited with external progrmas
         try:
             with open(os.path.join(funcpath,
                                    'brfunction_last_edit.json'), 'r') as f:
                 history = json.load(f)
         except IOError as e:
-
             # Pass only if error is: "No such file or directory"
             if e.errno != errno.ENOENT:
                 raise e
 
+        # Find files edited with external progrmas
         if history is not None:
-            # k - file path, v - object with data describing the file
-            for k, v in history.items():
+            # file_path - file path,
+            # hash_obj - object with data describing the file
+            for file_path, hash_obj in history.items():
+                file_path = os.path.join(bp_funcpath, file_path)
                 try:
-                    with open(k, 'r') as f:
+                    with open(file_path, 'r') as f:
                         hasher = hashlib.md5()
                         hasher.update(f.read())
-                        if v['md5'] != hasher.hexdigest():
+                        if hash_obj['md5'] != hasher.hexdigest():
                             raise Exception(
-                                'File ' +
-                                k +
+                                'File ' + file_path +
                                 ' has been modified with external ' +
                                 'application. Delete the file and run ' +
                                 'filter again if you are sure that you want' +
                                 ' apply changes to it. Code:cs4kwg')
                     try:
-                        os.remove(k)
+                        os.remove(file_path)
                     except OSError:
                         pass
                 except IOError as e:
@@ -649,12 +650,11 @@ class Planner(object):
                         raise e
 
         # Edit files
-        cut = len(funcpath) + 1
         new_history = {}
         # source - source file path, v - dictionary with list of commands form
         # the file in v['commands']
         for source, v in self.parser.functions.items():
-            target = os.path.join(bp_funcpath, source[cut:])
+            target = os.path.join(bp_funcpath, source)
             if not os.path.exists(os.path.dirname(target)):
                 os.makedirs(os.path.dirname(target))
 
@@ -666,7 +666,7 @@ class Planner(object):
                 f.write(file_content)
                 hasher = hashlib.md5()
                 hasher.update(file_content)
-                new_history[target] = {'md5': hasher.hexdigest()}
+                new_history[source] = {'md5': hasher.hexdigest()}
 
         # Save history of edits
         with open(os.path.join(funcpath, 'brfunction_last_edit.json'),
