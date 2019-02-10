@@ -36,17 +36,17 @@ class FilePDR(ProjectDataRepository):
     Implementation of ProjectDataRepository. Uses path to a file
     as a data source. The file can be project.json or .brfunction.
     '''
-    def __init__(self, file_path, floor_block, floor_height, level, box):
-        self.file_path = file_path  # Defined
+    def __init__(self, file_path, floor_block, level, box, floor_height=255):
+        self.file_path = file_path
         self.floor_block = floor_block
-        self.floor_height = floor_height  # Defined
+        self.floor_height = floor_height
 
-        self.area = box  # Defined
+        self.area = box
         self.level = level
 
-        self.files = None  # Defined
-        self.functions_path = None  # Defined
-        self.behavior_pack_uuid = None  # Defined
+        self.files = None
+        self.functions_path = None
+        self.behavior_pack_uuid = None
 
         class CustomBox(object):
             def __init__(self):
