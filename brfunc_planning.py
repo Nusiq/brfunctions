@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from brfunc_building import Builder
 from brfunc_parsing import Token
 import hashlib
@@ -613,9 +615,16 @@ class Planner(object):
 
         # Load history of last edit.
         history = None
+
+        history_file_path = os.path.join(
+            os.path.dirname(
+                self.project_data_repository.get_project_file_path()
+            ),
+            '.brfunc_data/history.json'
+        )
+
         try:
-            with open(os.path.join(funcpath,
-                                   'brfunction_last_edit.json'), 'r') as f:
+            with open(history_file_path, 'r') as f:
                 history = json.load(f)
         except IOError as e:
             # Pass only if error is: "No such file or directory"
@@ -668,9 +677,10 @@ class Planner(object):
                 hasher.update(file_content)
                 new_history[source] = {'md5': hasher.hexdigest()}
 
+        if not os.path.exists(os.path.dirname(history_file_path)):
+            os.makedirs(os.path.dirname(history_file_path))
         # Save history of edits
-        with open(os.path.join(funcpath, 'brfunction_last_edit.json'),
-                  'w') as f:
+        with open(history_file_path, 'w') as f:
             json.dump(new_history, f)
 
     def analyse(self):

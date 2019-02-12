@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from pymclevel import (  # pylint: disable=import-error
     TAG_List, TAG_Byte, TAG_Int, TAG_Compound, TAG_Short,
     TAG_String, TAG_Long, alphaMaterials,

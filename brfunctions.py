@@ -15,17 +15,15 @@ displayName = "Nusiq's brfunctions - v1.6.0"
 inputs = (
     ("File path", "file-open"),
     ("Floor block", alphaMaterials[169, 0]),  # Sea lantern
-    # ("Floor height", (255, 1, 255))
 )
 
 
 def perform(level, box, options):
     os.system('cls')
-    project_data_repository = MultipleSourcePDR(
-        FilePDR(
+
+    project_data_repository = FilePDR(
             str(options["File path"]), options["Floor block"],
             level, box,  # options["Floor height"],
-        )
     )
     parser = Parser(project_data_repository)
     parser.parse_all()
